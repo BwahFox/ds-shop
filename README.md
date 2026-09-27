@@ -85,8 +85,10 @@ DS-mode Wi-Fi only supports open and WEP networks.
 
 ### 3. Get the app
 
-Download `ds-shop.nds` from the releases page, or build it yourself (see below).
-Put it anywhere on the SD card and launch it.
+Download the latest `DS-Shop-vX.Y.Z.zip` from the releases page and copy its
+`SD card` folder's contents to the root of your SD card. The zip also has a
+copy of the server. Or build the app yourself (see below). `ds-shop.nds` can
+live anywhere on the card.
 
 **Controls:** tap, or use the D-pad and A/B. **Y** searches the current list.
 **SELECT** mutes the music. To quit, choose **Exit** on the home page, or press
@@ -94,8 +96,9 @@ START. On a DSi, you can also tap the power button.
 
 ## Optional extras
 
-These use files from Nintendo's DSi Shop, so they aren't included. Make them
-yourself and put them in `/ds-shop/` on the SD card.
+The release zip already has both files in its `ds-shop/` folder. They're made
+from Nintendo's DSi Shop, so they aren't in the source code. To make them
+yourself, put them in `/ds-shop/` on the SD card:
 
 - **Music** (`music.bin`): converted from a recording of the DSi Shop theme.
   Needs ffmpeg and numpy.
