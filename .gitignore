@@ -22,3 +22,7 @@ anim.bin
 # Editor / OS cruft
 *.swp
 .DS_Store
+
+# Roms and SD Card
+/roms
+/sdcard/
