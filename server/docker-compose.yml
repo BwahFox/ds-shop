@@ -1,0 +1,11 @@
+services:
+  ds-shop-server:
+    build: .
+    ports:
+      - "8888:8888"
+    volumes:
+      - ${ROMS_DIR:-./roms}:/roms:ro
+    environment:
+      - ROMS_DIR=/roms
+      - PORT=8888
+    restart: unless-stopped

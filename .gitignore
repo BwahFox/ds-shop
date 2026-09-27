@@ -1,0 +1,24 @@
+# devkitARM / NDS build artifacts
+client/build/
+*.elf
+*.nds
+*.map
+*.o
+*.d
+
+# Python
+__pycache__/
+*.pyc
+
+# Scratch graphics analysis (regenerable): contact sheets, grids, zooms
+gfx/**/_*.png
+gfx/sheets/*_grid.png
+
+# Shop music made by tools/make_music.py from a recording (not ours to publish)
+music.bin
+# ...and the DSi Shop sprites made by tools/make_anim.py
+anim.bin
+
+# Editor / OS cruft
+*.swp
+.DS_Store
