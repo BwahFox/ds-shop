@@ -4,6 +4,14 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=/opt/devkitpro/devkitARM")
 endif
 
+# Banner shown by the DS menu and loaders. Set before ds_rules reads them; the
+# icon path is fixed in the first pass and inherited by the one inside build/.
+VERSION         := 1.0.0
+GAME_TITLE      := DS Shop
+GAME_SUBTITLE1  := Game downloader
+GAME_SUBTITLE2  := v$(VERSION)
+export GAME_ICON ?= $(CURDIR)/icon.bmp
+
 include $(DEVKITARM)/ds_rules
 
 TARGET      := ds-shop
