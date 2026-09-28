@@ -13,6 +13,8 @@ void config_load(Config *config, const char *path) {
     config->ssid[0] = '\0';
     strncpy(config->download_path, DEFAULT_DL_PATH, MAX_PATH_LEN - 1);
     config->download_path[MAX_PATH_LEN - 1] = '\0';
+    strncpy(config->update_path, DEFAULT_UPDATE_PATH, MAX_PATH_LEN - 1);
+    config->update_path[MAX_PATH_LEN - 1] = '\0';
     config->text_ui = 0;
     config->music = 1;
     config->music_volume = 70;
@@ -48,6 +50,9 @@ void config_load(Config *config, const char *path) {
             config->music_volume = v < 0 ? 0 : v > 100 ? 100 : v;
         } else if (strcmp(key, "download_path") == 0) {
             strncpy(config->download_path, val, MAX_PATH_LEN - 1);
+        } else if (strcmp(key, "update_path") == 0) {
+            strncpy(config->update_path, val, MAX_PATH_LEN - 1);
+            config->update_path[MAX_PATH_LEN - 1] = '\0';
         }
     }
     fclose(f);
@@ -91,8 +96,9 @@ bool config_save(const Config *config, const char *path) {
         "\n"
         "# Reserved (the DS uses its WFC connection settings)\n"
         "ssid=%s\n"
-        "download_path=%s\n",
+        "download_path=%s\n"
+        "update_path=%s\n",
         c.server, c.port, c.server2, c.port2, c.music, c.music_volume,
-        c.text_ui ? "text" : "graphical", c.ssid, c.download_path);
+        c.text_ui ? "text" : "graphical", c.ssid, c.download_path, c.update_path);
     return fclose(f) == 0;
 }

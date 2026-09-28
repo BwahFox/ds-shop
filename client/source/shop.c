@@ -195,10 +195,17 @@ bool shop_download_update(const Config *config,
     }
     return true;
 #else
-    static const char update_dir[] = "/roms/dsiware";
-    mkdir_p(update_dir);
+    const char *dest = config->update_path[0] ? config->update_path : DEFAULT_UPDATE_PATH;
+    char dest_dir[MAX_PATH_LEN];
+    snprintf(dest_dir, sizeof(dest_dir), "%s", dest);
+    char *slash = strrchr(dest_dir, '/');
+    if (slash) {
+        if (slash == dest_dir) slash[1] = '\0';
+        else *slash = '\0';
+        mkdir_p(dest_dir);
+    }
     return http_download(config->server, config->port, "/roms/ds-shop.nds",
-                         "/roms/nds/ds-shop.nds", progress) >= 0;
+                         dest, progress) >= 0;
 #endif
 }
 

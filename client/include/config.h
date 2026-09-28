@@ -8,6 +8,7 @@
 #define DEFAULT_PORT        8888
 #define DEFAULT_SERVER      "10.42.0.1"
 #define DEFAULT_DL_PATH     "/roms/nds"
+#define DEFAULT_UPDATE_PATH "/roms/nds/ds-shop.nds"
 
 typedef struct {
     char server[MAX_SERVER_LEN];
@@ -18,6 +19,7 @@ typedef struct {
                                       memory while the backup is the one in use */
     char ssid[MAX_SSID_LEN];       /* empty = use WFC firmware slots */
     char download_path[MAX_PATH_LEN];
+    char update_path[MAX_PATH_LEN];
     int  text_ui;                  /* ui=text: use the text fallback UI */
     int  music;                    /* music=0 turns the shop music off */
     int  music_volume;             /* music_volume=0..100 (default 70) */
