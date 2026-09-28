@@ -38,8 +38,7 @@ unsigned wifi_get_signal_strength(void) {
         if (dbm >= -52) return 3;
         if (dbm >= -65) return 2;
         if (dbm >= -78) return 1;
-        return 0;
+    } else {
+        return wlmgrGetSignalStrength();
     }
-
-    return wlmgrGetSignalStrength();
 }
