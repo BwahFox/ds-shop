@@ -202,8 +202,9 @@ void draw_wifi_signal_indicator(void) {
         "................",
         "................",
     };
-    const int icon_x = 230;
-    const int icon_y = 154;
+    const int pixel_scale = 2;
+    const int icon_x = 222;
+    const int icon_y = 146;
     const u16 green = RGB5(40, 211, 77);
     const u16 gray = RGB5(132, 138, 141);
     const u16 light_gray = RGB5(220, 223, 225);
@@ -217,7 +218,13 @@ void draw_wifi_signal_indicator(void) {
             case 'l': color = light_gray; break;
             default: continue;
             }
-            bg[(icon_y + y) * 256 + icon_x + x] = color;
+            for (int sy = 0; sy < pixel_scale; sy++) {
+                for (int sx = 0; sx < pixel_scale; sx++) {
+                    int px = icon_x + x * pixel_scale + sx;
+                    int py = icon_y + y * pixel_scale + sy;
+                    bg[py * 256 + px] = color;
+                }
+            }
         }
     }
 }
