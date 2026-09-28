@@ -17,6 +17,13 @@ fi
 echo ""
 echo "Output: $OUT"
 
+UPDATE_ROM="$SCRIPT_DIR/roms/Update DS Shop.nds"
+if [[ ! -d "$(dirname $UPDATE_ROM)" ]]; then
+    mkdir -p "$(dirname "$UPDATE_ROM")"
+fi
+cp -f "$OUT" "$UPDATE_ROM"
+echo "Update ROM: $UPDATE_ROM"
+
 # Auto-deploy to melonDS's SD card folder (its DLDI "FolderPath"), so the build
 # is always on the emulated SD card. The folder is read from the melonDS config
 # (Flatpak first, then native); override with DEPLOY_DIR=/some/dir, or skip with
