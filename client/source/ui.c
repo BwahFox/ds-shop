@@ -181,9 +181,12 @@ static void draw_detail(PrintConsole *top, const Title *t,
 }
 
 /* ---- top-screen wifi signal indicator ---- */
+static bool g_wifi_indicator_active;
+
 void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
+    g_wifi_indicator_active = true;
 
     unsigned strength = wifi_get_signal_strength();
 
@@ -223,6 +226,10 @@ void draw_wifi_signal_indicator(void) {
                 bg[(icon_y + y) * 256 + icon_x + x] = color;
         }
     }
+}
+
+void wifi_signal_indicator_tick(void) {
+    if (g_wifi_indicator_active) draw_wifi_signal_indicator();
 }
 
 /* ---- top screen during a download: just the title + total size ---- */

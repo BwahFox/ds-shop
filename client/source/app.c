@@ -4,6 +4,7 @@
 #include "app.h"
 #include "music.h"
 #include "wifi.h"
+#include "ui.h"
 
 static FILE *g_partial_file;
 static const char *g_partial_path;
@@ -32,4 +33,5 @@ void app_poll(void) {
 void app_vblank(void) {
     swiWaitForVBlank();
     app_poll();
+    wifi_signal_indicator_tick();
 }
