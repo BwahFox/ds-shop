@@ -204,9 +204,9 @@ void draw_wifi_signal_indicator(void) {
     };
     const int icon_x = 230;
     const int icon_y = 154;
-    const u16 green = RGB(40, 211, 77);
-    const u16 gray = RGB(132, 138, 141);
-    const u16 light_gray = RGB(220, 223, 225);
+    const u16 green = RGB5(40, 211, 77);
+    const u16 gray = RGB5(132, 138, 141);
+    const u16 light_gray = RGB5(220, 223, 225);
 
     for (int y = 0; y < 16; y++) {
         for (int x = 0; x < 16; x++) {
