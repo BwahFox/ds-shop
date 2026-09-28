@@ -553,6 +553,7 @@ static int search_input(PrintConsole *top, PrintConsole *bot,
 #define ACT_RANDOM  1
 #define ACT_SEARCH  2
 #define ACT_PICK    3     /* VC "Search": pick the system first */
+#define ACT_UPDATE  4
 
 typedef struct {
     const char     *label;
@@ -562,6 +563,32 @@ typedef struct {
 
 static int run_entry(PrintConsole *top, PrintConsole *bot, const Config *config,
                      const MenuEntry *e) {
+    if (e->action == ACT_UPDATE) {
+        icon_hide();
+        consoleSelect(bot);
+        iprintf("\x1b[2J\x1b[0;0H" COL_TITLE "Update DS Shop" COL_RESET);
+        iprintf("\x1b[2;0H" COL_DIM "Downloading ds-shop.nds..." COL_RESET);
+        g_progress_screen = bot;
+        bool ok = shop_download_update(config, progress_cb);
+        g_progress_screen = NULL;
+
+        consoleSelect(bot);
+        iprintf("\x1b[2J\x1b[0;0H%s", ok
+                ? COL_GREEN "Update downloaded!" COL_RESET
+                : COL_RED "Update failed." COL_RESET);
+        if (ok)
+            iprintf("\x1b[2;0H" COL_DIM "Saved to:" COL_RESET
+                    "\x1b[3;0H%-32.32s", config->update_path);
+        else
+            iprintf("\x1b[2;0H" COL_DIM "Check the server and try again." COL_RESET);
+        iprintf("\x1b[23;0H" COL_HINT "Press any button to continue." COL_RESET);
+        while (1) {
+            app_vblank();
+            scanKeys();
+            if (keysDown()) break;
+        }
+        return NAV_BACK;
+    }
     if (e->action == ACT_SEARCH) {
         char query[32];
         if (!search_input(top, bot, query, sizeof(query))) return NAV_BACK;
@@ -609,6 +636,7 @@ void text_ui_run(PrintConsole *top, PrintConsole *bot, const Config *config) {
         {"Search",         &CAT_DS,      ACT_SEARCH},
         {"All DS Titles",  &CAT_DS,      ACT_BROWSE},
         {"DSiWare",        &CAT_DSIWARE, ACT_BROWSE},
+        {"Update DS Shop", &CAT_DS,      ACT_UPDATE},
     };
     static const MenuEntry vc_menu[] = {
         {"Nintendo Ent. System", &CAT_NES, ACT_BROWSE},
@@ -632,7 +660,7 @@ void text_ui_run(PrintConsole *top, PrintConsole *bot, const Config *config) {
         if (home < 0) continue;          /* no "back" from the homepage */
 
         int r;
-        if (home == 0)      r = run_menu(top, bot, config, "Nintendo DS & DSiWare", ds_menu, 5);
+        if (home == 0)      r = run_menu(top, bot, config, "Nintendo DS & DSiWare", ds_menu, 6);
         else if (home == 1) r = run_menu(top, bot, config, "Virtual Console", vc_menu, 5);
         else                r = run_menu(top, bot, config, "TWiLight Menu Themes", theme_menu, 4);
         if (r == NAV_EXIT) return;

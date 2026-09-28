@@ -213,6 +213,7 @@ static int main_gui(bool sd_ok, Config *config) {
 
 int main(void) {
     irqSet(IRQ_VBLANK, NULL);
+    pmSetSleepAllowed(true);
 
     /* holding SELECT at boot picks the text fallback */
     app_vblank();

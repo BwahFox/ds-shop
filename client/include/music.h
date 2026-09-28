@@ -11,6 +11,9 @@ void music_start(const Config *config);
 /* Mutes/unmutes (the SELECT button in the graphical shop). */
 void music_toggle(void);
 
+/* Pause while the lid is closed; resume only if it was playing before. */
+void music_update_lid(bool closed);
+
 void music_stop(void);
 
 /* Applies changed music settings (on/off, volume) right away. */
