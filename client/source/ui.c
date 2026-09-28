@@ -190,8 +190,8 @@ void draw_wifi_signal_indicator(void) {
 
     unsigned strength = wifi_get_signal_strength();
 
-    const int icon_x = 230;
-    const int icon_y = 154;
+    const int icon_x = 234;
+    const int icon_y = 170;
     const u16 black = RGB5(0, 0, 0) | 0x8000;
     const u16 green = RGB5(0, 31, 0) | 0x8000;
     const u16 yellow = RGB5(31, 31, 0) | 0x8000;

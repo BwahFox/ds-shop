@@ -691,14 +691,14 @@ static int browse_screen(const Config *config, const Category *cat,
 
 /* ---- settings ---- */
 
-enum { SET_SERVER, SET_PORT, SET_SERVER2, SET_PORT2, SET_MUSIC, SET_VOLUME, SET_UI, SET_COUNT };
+enum { SET_SERVER, SET_PORT, SET_SERVER2, SET_PORT2, SET_MUSIC, SET_VOLUME, SET_UI, SET_UPDATE_PATH, SET_COUNT };
 #define ID_SET_CANCEL 300
 #define ID_SET_SAVE   301
 #define SET_Y   28
 #define SET_H   17
 
 static const char *const SET_LABELS[SET_COUNT] = {
-    "Server", "Port", "Backup server", "Backup port", "Music", "Music volume", "Start in",
+    "Server", "Port", "Backup server", "Backup port", "Music", "Music volume", "Start in", "Update path"
 };
 static const char *const SET_HELP[SET_COUNT] = {
     "The address of the PC or Pi running the shop server. Tap to change it.",
@@ -708,17 +708,19 @@ static const char *const SET_HELP[SET_COUNT] = {
     "The DSi Shop music (needs music.bin). SELECT also mutes it anywhere.",
     "How loud the music plays. Left and Right change it.",
     "Which interface to start in. Holding SELECT at startup picks the text one.",
+    "Where to save the updated DS Shop rom. Defaults to /roms/nds/ds-shop.nds",
 };
 
 static void setting_value(const Config *c, int i, char *buf, int len) {
     switch (i) {
-    case SET_SERVER:  snprintf(buf, len, "%s", c->server); break;
-    case SET_PORT:    snprintf(buf, len, "%d", c->port); break;
-    case SET_SERVER2: snprintf(buf, len, "%s", c->server2[0] ? c->server2 : "None"); break;
-    case SET_PORT2:   snprintf(buf, len, "%d", c->port2); break;
-    case SET_MUSIC:   snprintf(buf, len, "%s", c->music ? "On" : "Off"); break;
-    case SET_VOLUME:  snprintf(buf, len, "<  %d%%  >", c->music_volume); break;
-    default:          snprintf(buf, len, "%s", c->text_ui ? "Text menu" : "Shop"); break;
+    case SET_SERVER:      snprintf(buf, len, "%s", c->server); break;
+    case SET_PORT:        snprintf(buf, len, "%d", c->port); break;
+    case SET_SERVER2:     snprintf(buf, len, "%s", c->server2[0] ? c->server2 : "None"); break;
+    case SET_PORT2:       snprintf(buf, len, "%d", c->port2); break;
+    case SET_MUSIC:       snprintf(buf, len, "%s", c->music ? "On" : "Off"); break;
+    case SET_VOLUME:      snprintf(buf, len, "<  %d%%  >", c->music_volume); break;
+    case SET_UPDATE_PATH: snprintf(buf, len, "%s", c->update_path); break;
+    default:              snprintf(buf, len, "%s", c->text_ui ? "Text menu" : "Shop"); break;
     }
 }
 

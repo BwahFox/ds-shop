@@ -97,6 +97,8 @@ bool config_save(const Config *config, const char *path) {
         "# Reserved (the DS uses its WFC connection settings)\n"
         "ssid=%s\n"
         "download_path=%s\n"
+        "\n"
+        "# Path to where the ROM is stored upon updating.\n"
         "update_path=%s\n",
         c.server, c.port, c.server2, c.port2, c.music, c.music_volume,
         c.text_ui ? "text" : "graphical", c.ssid, c.download_path, c.update_path);
