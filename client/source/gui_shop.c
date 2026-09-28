@@ -27,6 +27,7 @@
 #define ACT_RANDOM  1
 #define ACT_SEARCH  2
 #define ACT_PICK    3        /* pick a VC system, then search it */
+#define ACT_UPDATE  4        /* update the shop itself */
 
 typedef struct {
     const char     *label;
@@ -49,7 +50,7 @@ static const Entry DS_ENTRIES[] = {
     {"DSiWare",        "Downloadable DSi software.",                  &CAT_DSIWARE, ACT_BROWSE},
     {"Random Title",   "Feeling lucky? Jump to a random DS game.",    &CAT_DS,      ACT_RANDOM},
     {"Search",         "Find a DS game by name.",                     &CAT_DS,      ACT_SEARCH},
-    {"Update DS Shop", "Get the latest version of the shop.",         &CAT_DS,      ACT_BROWSE},
+    {"Update DS Shop", "Get the latest version of the shop.",         &CAT_DS,      ACT_UPDATE},
 };
 static const Entry VC_ENTRIES[] = {
     {"NES",              "Nintendo Entertainment System classics.",     &CAT_NES, ACT_BROWSE},
@@ -390,6 +391,33 @@ static void run_downloads(const Config *config) {
     snprintf(l1, sizeof(l1), "%d item%s downloaded.", ok, ok == 1 ? "" : "s");
     if (fail) snprintf(l2, sizeof(l2), "%d failed and stayed in the queue.", fail);
     gui_message(fail ? "Some downloads failed" : "Download complete", l1, fail ? l2 : NULL);
+}
+
+static void run_update(const Config *config) {
+    static QueueItem update_item;
+    g_dl_item = &update_item;
+    g_dl_n = 1;
+    g_dl_total = 1;
+    g_dl_pct = 0;
+    g_dl_waiting = false;
+
+    gui_top_frame(bg_detail_top, 52, 88);
+    gfx_text_wrap(SCR_TOP, &font_title, 26, 60, SCR_W - 52, 2, "Update DS Shop", C_TEXT);
+    gfx_text_center(SCR_TOP, &font_small, SCR_W / 2, 116,
+                    "Downloading the latest version", C_TEXT_DIM);
+    gfx_present(1);
+    anim_dl_start();
+    dl_draw(0, 0);
+
+    bool ok = shop_download_update(config, dl_progress);
+    dl_end(&update_item, ok);
+    g_dl_item = NULL;
+    anim_dl_stop();
+
+    gui_message(ok ? "Update downloaded" : "Update failed",
+                ok ? "Saved to /roms/nds/ds-shop.nds."
+                   : "Couldn't download ds-shop.nds from the server.",
+                ok ? NULL : "Check the server and try again.");
 }
 
 /* ---- the list browser ---- */
@@ -823,6 +851,10 @@ static void settings_screen(Config *config) {
 /* ---- running a menu entry ---- */
 
 static int run_entry(const Config *config, const Entry *e) {
+    if (e->action == ACT_UPDATE) {
+        run_update(config);
+        return NAV_BACK;
+    }
     if (e->action == ACT_SEARCH) {
         char q[40];
         if (!keyboard_screen(e->cat->name, q, sizeof(q))) return NAV_BACK;

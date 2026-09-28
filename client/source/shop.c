@@ -184,6 +184,24 @@ bool shop_download(const Config *config, const QueueItem *item,
                                          : download_rom(config, item);
 }
 
+bool shop_download_update(const Config *config,
+                          void (*progress)(size_t done, size_t total)) {
+#ifdef TEST_MODE
+    (void)config;
+    size_t total = 1024 * 1024;
+    for (int i = 1; i <= 90; i++) {
+        app_vblank();
+        if (progress) progress((size_t)((u64)total * i / 90), total);
+    }
+    return true;
+#else
+    static const char update_dir[] = "/roms/dsiware";
+    mkdir_p(update_dir);
+    return http_download(config->server, config->port, "/roms/ds-shop.nds",
+                         "/roms/nds/ds-shop.nds", progress) >= 0;
+#endif
+}
+
 void shop_run_queue(const Config *config, const ShopDownloadUI *ui, int *ok, int *failed) {
     int total = g_queue_count, good = 0, keep = 0;
     for (int i = 0; i < g_queue_count; i++) {

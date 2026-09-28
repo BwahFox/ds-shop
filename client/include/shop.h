@@ -39,6 +39,8 @@ typedef struct {
 
 bool shop_download(const Config *config, const QueueItem *item,
                    void (*progress)(size_t done, size_t total));
+bool shop_download_update(const Config *config,
+                          void (*progress)(size_t done, size_t total));
 
 /* Download every queued item in order. Successful ones leave the queue, failures
    stay (so running the queue again retries only those). */
