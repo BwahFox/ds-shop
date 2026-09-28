@@ -184,47 +184,35 @@ void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
 
-    static const char icon[16][17] = {
-        "................",
-        "................",
-        "..gggggsssssss..",
-        "..gggggsssssss..",
-        "...ss.......ss..",
-        "...ss.......ss..",
-        "...ss....ll.ss..",
-        "...ss....ll.ss..",
-        "...ss.ll.ll.ss..",
-        "...ss.ll.ll.ss..",
-        "...ss.ll.ll.ss..",
-        "...sssssssssss..",
-        "................",
-        "................",
-        "................",
-        "................",
-    };
-    const int pixel_scale = 2;
-    const int icon_x = 222;
-    const int icon_y = 146;
-    const u16 green = RGB5(40, 211, 77);
-    const u16 gray = RGB5(132, 138, 141);
-    const u16 light_gray = RGB5(220, 223, 225);
+    const int icon_x = 230;
+    const int icon_y = 154;
+    const u16 black = RGB5(0, 0, 0);
+    const u16 green = RGB5(0, 31, 0);
+    const u16 gray = RGB5(17, 17, 17);
 
-    for (int y = 0; y < 16; y++) {
-        for (int x = 0; x < 16; x++) {
-            u16 color;
-            switch (icon[y][x]) {
-            case 'g': color = green; break;
-            case 's': color = gray; break;
-            case 'l': color = light_gray; break;
-            default: continue;
-            }
-            for (int sy = 0; sy < pixel_scale; sy++) {
-                for (int sx = 0; sx < pixel_scale; sx++) {
-                    int px = icon_x + x * pixel_scale + sx;
-                    int py = icon_y + y * pixel_scale + sy;
-                    bg[py * 256 + px] = color;
-                }
-            }
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++)
+            bg[(icon_y + y) * 256 + icon_x + x] = black;
+
+    for (int x = 1; x < 15; x++) {
+        bg[(icon_y + 1) * 256 + icon_x + x] = green;
+        bg[(icon_y + 14) * 256 + icon_x + x] = green;
+    }
+
+    /* Hollow 3x3 antenna head, with a five-pixel stem. */
+    for (int y = 5; y <= 7; y++)
+        for (int x = 2; x <= 4; x++)
+            bg[(icon_y + y) * 256 + icon_x + x] = gray;
+    bg[(icon_y + 6) * 256 + icon_x + 3] = black;
+    for (int y = 8; y <= 12; y++)
+        bg[(icon_y + y) * 256 + icon_x + 3] = gray;
+
+    static const int bar_x[] = { 5, 8, 11 };
+    static const int bar_h[] = { 2, 5, 8 };
+    for (int i = 0; i < 3; i++) {
+        for (int y = 13 - bar_h[i]; y <= 12; y++) {
+            for (int x = bar_x[i]; x < bar_x[i] + 2; x++)
+                bg[(icon_y + y) * 256 + icon_x + x] = gray;
         }
     }
 }
