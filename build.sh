@@ -17,7 +17,7 @@ fi
 echo ""
 echo "Output: $OUT"
 
-UPDATE_ROM="$SCRIPT_DIR/roms/Update DS Shop.nds"
+UPDATE_ROM="$SCRIPT_DIR/roms/ds-shop.nds"
 if [[ ! -d "$(dirname $UPDATE_ROM)" ]]; then
     mkdir -p "$(dirname "$UPDATE_ROM")"
 fi
