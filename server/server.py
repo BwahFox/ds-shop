@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 ROMS_DIR = os.environ.get("ROMS_DIR", os.path.join(os.path.dirname(__file__), "roms"))
 
-GITHUB_RELEASE_API = "https://api.github.com/repos/SpareEnderboy/ds-shop/releases/latest"
+GITHUB_RELEASE_API = "https://api.github.com/repos/BwahFox/ds-shop/releases/latest"
 UPDATE_INTERVAL_SECONDS = 7 * 24 * 60 * 60
 MAX_UPDATE_SIZE = 32 * 1024 * 1024
 
