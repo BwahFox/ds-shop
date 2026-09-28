@@ -150,7 +150,6 @@ static void draw_detail(PrintConsole *top, const Title *t,
     iprintf("\x1b[0;0H" COL_TITLE "%-32.32s" COL_RESET, t->name);
     iprintf("\x1b[1;0H" COL_DIM "--------------------------------" COL_RESET);
 
-    /* word-wrap description into rows 3-7 */
     char desc_copy[MAX_DESC_LEN];
     strncpy(desc_copy, t->desc, MAX_DESC_LEN - 1);
     desc_copy[MAX_DESC_LEN - 1] = '\0';
@@ -159,7 +158,7 @@ static void draw_detail(PrintConsole *top, const Title *t,
     char *p = desc_copy;
     while (*p && row < 9) {
         char line[SCREEN_COLS + 1];
-        int  n = 0;
+        int n = 0;
         while (*p && n < SCREEN_COLS) line[n++] = *p++;
         line[n] = '\0';
         iprintf("\x1b[%d;0H%-32s", row++, line);
@@ -179,7 +178,16 @@ static void draw_detail(PrintConsole *top, const Title *t,
 
     iprintf("\x1b[15;0H" COL_SELECT "[A] Queue   [X] Download" COL_RESET);
 }
-/* ---- top screen wifi signal indicator ---- */
+
+/* ---- top-screen wifi signal indicator ---- */
+static bool in_round_rect(int x, int y, int w, int h, int radius) {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    int cx = x < radius ? radius - 1 : x >= w - radius ? w - radius : x;
+    int cy = y < radius ? radius - 1 : y >= h - radius ? h - radius : y;
+    int dx = x - cx, dy = y - cy;
+    return dx * dx + dy * dy <= radius * radius;
+}
+
 void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
@@ -188,57 +196,47 @@ void draw_wifi_signal_indicator(void) {
     const int panel_y = 152;
     const int panel_w = 40;
     const int panel_h = 20;
-    const u16 panel = RGB15(242, 245, 248);
-    const u16 border = RGB15(180, 187, 193);
-    const u16 blue1 = RGB15(72, 160, 255);
-    const u16 blue2 = RGB15(45, 126, 255);
-    const u16 blue3 = RGB15(18, 96, 240);
+    const u16 panel = RGB5(248, 251, 253);
+    const u16 border = RGB5(174, 194, 207);
+    const u16 signal = RGB5(0, 139, 207);
 
     for (int y = 0; y < panel_h; y++) {
         for (int x = 0; x < panel_w; x++) {
             int px = panel_x + x;
             int py = panel_y + y;
             if (px < 0 || py < 0 || px >= 256 || py >= 192) continue;
-
-            int cx = x - panel_w / 2;
-            int cy = y - panel_h / 2;
-            if (cx * cx + cy * cy > ((panel_w / 2) * (panel_w / 2)) + 8)
-                continue;
-            bg[py * 256 + px] = panel;
-        }
-    }
-
-    for (int x = 1; x < panel_w - 1; x++) {
-        int px = panel_x + x;
-        if (px >= 0 && px < 256) {
-            bg[(panel_y) * 256 + px] = border;
-            bg[(panel_y + panel_h - 1) * 256 + px] = border;
-        }
-    }
-    for (int y = 1; y < panel_h - 1; y++) {
-        int py = panel_y + y;
-        if (py >= 0 && py < 192) {
-            bg[py * 256 + panel_x] = border;
-            bg[py * 256 + (panel_x + panel_w - 1)] = border;
-        }
-    }
-
-    const int bar_x = panel_x + 9;
-    const int bar_y = panel_y + 7;
-    const int bar_w[4] = { 4, 7, 10, 13 };
-    const int bar_h[4] = { 2, 4, 6, 8 };
-    const u16 bar_col[4] = { blue1, blue1, blue2, blue3 };
-
-    for (int i = 0; i < 4; i++) {
-        int x0 = bar_x + i * 8;
-        int y0 = bar_y + (8 - bar_h[i]);
-        for (int y = 0; y < bar_h[i]; y++) {
-            for (int x = 0; x < bar_w[i]; x++) {
-                int px = x0 + x;
-                int py = y0 + y;
-                if (px < 0 || py < 0 || px >= 256 || py >= 192) continue;
-                bg[py * 256 + px] = bar_col[i];
+            if (in_round_rect(x, y, panel_w, panel_h, 4)) {
+                bg[py * 256 + px] = border;
+                if (in_round_rect(x - 1, y - 1, panel_w - 2, panel_h - 2, 3))
+                    bg[py * 256 + px] = panel;
             }
+        }
+    }
+
+    /* Three crisp radio waves above the status dot. */
+    const int center_x = panel_x + panel_w / 2;
+    const int center_y = panel_y + panel_h - 3;
+    const int radii[] = { 4, 8, 12 };
+    for (int i = 0; i < 3; i++) {
+        int radius = radii[i];
+        int inner = (radius - 1) * (radius - 1);
+        int outer = (radius + 1) * (radius + 1);
+        for (int dy = -radius; dy < 0; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                int distance = dx * dx + dy * dy;
+                int px = center_x + dx;
+                int py = center_y + dy;
+                if (distance >= inner && distance <= outer &&
+                    px >= 0 && px < 256 && py >= 0 && py < 192)
+                    bg[py * 256 + px] = signal;
+            }
+        }
+    }
+
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx * dx + dy * dy <= 2)
+                bg[(center_y + dy) * 256 + center_x + dx] = signal;
         }
     }
 }
