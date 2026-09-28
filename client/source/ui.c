@@ -180,7 +180,7 @@ static void draw_detail(PrintConsole *top, const Title *t,
     iprintf("\x1b[15;0H" COL_SELECT "[A] Queue   [X] Download" COL_RESET);
 }
 /* ---- top screen wifi signal indicator ---- */
-static void draw_wifi_signal_indicator(void) {
+void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
 

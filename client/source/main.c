@@ -107,6 +107,8 @@ static int main_text(bool sd_ok, Config *config) {
     BG_PALETTE[191] = RGB15( 2,  6, 22);   /* slot 11 select       */
     BG_PALETTE[255] = RGB15( 1,  2,  8);   /* slot 15 title        */
 
+    draw_wifi_signal_indicator();
+
     consoleSelect(&g_bot);
     iprintf("\x1b[2J");
     iprintf("\x1b[0;0H\x1b[1;37m===[ DS SHOP ]=== \x1b[37m\n\n");
