@@ -180,63 +180,44 @@ static void draw_detail(PrintConsole *top, const Title *t,
 }
 
 /* ---- top-screen wifi signal indicator ---- */
-static bool in_round_rect(int x, int y, int w, int h, int radius) {
-    if (x < 0 || y < 0 || x >= w || y >= h) return false;
-    int cx = x < radius ? radius - 1 : x >= w - radius ? w - radius : x;
-    int cy = y < radius ? radius - 1 : y >= h - radius ? h - radius : y;
-    int dx = x - cx, dy = y - cy;
-    return dx * dx + dy * dy <= radius * radius;
-}
-
 void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
 
-    const int panel_x = 206;
-    const int panel_y = 152;
-    const int panel_w = 40;
-    const int panel_h = 20;
-    const u16 panel = RGB5(248, 251, 253);
-    const u16 border = RGB5(174, 194, 207);
-    const u16 signal = RGB5(0, 139, 207);
+    static const char icon[16][17] = {
+        "................",
+        "................",
+        "..gggggsssssss..",
+        "..gggggsssssss..",
+        "...ss.......ss..",
+        "...ss.......ss..",
+        "...ss....ll.ss..",
+        "...ss....ll.ss..",
+        "...ss.ll.ll.ss..",
+        "...ss.ll.ll.ss..",
+        "...ss.ll.ll.ss..",
+        "...sssssssssss..",
+        "................",
+        "................",
+        "................",
+        "................",
+    };
+    const int icon_x = 230;
+    const int icon_y = 154;
+    const u16 green = RGB(40, 211, 77);
+    const u16 gray = RGB(132, 138, 141);
+    const u16 light_gray = RGB(220, 223, 225);
 
-    for (int y = 0; y < panel_h; y++) {
-        for (int x = 0; x < panel_w; x++) {
-            int px = panel_x + x;
-            int py = panel_y + y;
-            if (px < 0 || py < 0 || px >= 256 || py >= 192) continue;
-            if (in_round_rect(x, y, panel_w, panel_h, 4)) {
-                bg[py * 256 + px] = border;
-                if (in_round_rect(x - 1, y - 1, panel_w - 2, panel_h - 2, 3))
-                    bg[py * 256 + px] = panel;
+    for (int y = 0; y < 16; y++) {
+        for (int x = 0; x < 16; x++) {
+            u16 color;
+            switch (icon[y][x]) {
+            case 'g': color = green; break;
+            case 's': color = gray; break;
+            case 'l': color = light_gray; break;
+            default: continue;
             }
-        }
-    }
-
-    /* Three crisp radio waves above the status dot. */
-    const int center_x = panel_x + panel_w / 2;
-    const int center_y = panel_y + panel_h - 3;
-    const int radii[] = { 4, 8, 12 };
-    for (int i = 0; i < 3; i++) {
-        int radius = radii[i];
-        int inner = (radius - 1) * (radius - 1);
-        int outer = (radius + 1) * (radius + 1);
-        for (int dy = -radius; dy < 0; dy++) {
-            for (int dx = -radius; dx <= radius; dx++) {
-                int distance = dx * dx + dy * dy;
-                int px = center_x + dx;
-                int py = center_y + dy;
-                if (distance >= inner && distance <= outer &&
-                    px >= 0 && px < 256 && py >= 0 && py < 192)
-                    bg[py * 256 + px] = signal;
-            }
-        }
-    }
-
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            if (dx * dx + dy * dy <= 2)
-                bg[(center_y + dy) * 256 + center_x + dx] = signal;
+            bg[(icon_y + y) * 256 + icon_x + x] = color;
         }
     }
 }
