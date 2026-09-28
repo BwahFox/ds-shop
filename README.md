@@ -1,5 +1,8 @@
+<div align="center">
+
 ![# DS Shop](bnaer.png)
 
+</div>
 DS Shop is a DSi Shop–style game downloader for the Nintendo DS. A homebrew `.nds` app
 connects over Wi-Fi to a small server on your PC and lets you browse and
 download your own games, DSiWare, Virtual Console ROMs and TWiLight Menu++
