@@ -122,6 +122,7 @@ static int main_text(bool sd_ok, Config *config) {
     iprintf("Server: %s:%d\n\n", config->server, config->port);
 
     int r = boot_network(config, text_step);
+    draw_wifi_signal_indicator();
     if (r == BOOT_NO_WIFI) {
         iprintf("\x1b[31mWiFi connection failed!\x1b[37m\n\n");
         iprintf("Configure WFC slot 1 via any\nWFC-enabled DS game.\n");

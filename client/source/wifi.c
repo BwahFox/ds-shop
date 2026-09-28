@@ -28,3 +28,8 @@ bool wifi_connect(const Config *config) {
 void wifi_disconnect(void) {
     Wifi_DisconnectAP();
 }
+
+unsigned wifi_get_signal_strength(void) {
+    if (Wifi_AssocStatus() != ASSOCSTATUS_ASSOCIATED) return 0;
+    return wlmgrGetSignalStrength();
+}

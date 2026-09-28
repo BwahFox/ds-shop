@@ -2,6 +2,7 @@
 #include "app.h"
 #include "shop.h"
 #include "icon.h"
+#include "wifi.h"
 #include <nds.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -184,10 +185,16 @@ void draw_wifi_signal_indicator(void) {
     u16 *bg = (u16 *)bgGetGfxPtr(3);
     if (!bg) return;
 
+    unsigned strength = wifi_get_signal_strength();
+
     const int icon_x = 230;
     const int icon_y = 154;
     const u16 black = RGB5(0, 0, 0) | 0x8000;
     const u16 green = RGB5(0, 31, 0) | 0x8000;
+    const u16 yellow = RGB5(31, 31, 0) | 0x8000;
+    const u16 red = RGB5(31, 0, 0) | 0x8000;
+    const u16 frame = strength == 0 ? red : strength == 1 ? yellow : green;
+    const u16 white = RGB5(31, 31, 31) | 0x8000;
     const u16 gray = RGB5(17, 17, 17) | 0x8000;
 
     for (int y = 0; y < 16; y++)
@@ -195,8 +202,8 @@ void draw_wifi_signal_indicator(void) {
             bg[(icon_y + y) * 256 + icon_x + x] = black;
 
     for (int x = 1; x < 15; x++) {
-        bg[(icon_y + 1) * 256 + icon_x + x] = green;
-        bg[(icon_y + 14) * 256 + icon_x + x] = green;
+        bg[(icon_y + 1) * 256 + icon_x + x] = frame;
+        bg[(icon_y + 14) * 256 + icon_x + x] = frame;
     }
 
     /* Hollow 3x3 antenna head, with a five-pixel stem. */
@@ -210,9 +217,10 @@ void draw_wifi_signal_indicator(void) {
     static const int bar_x[] = { 5, 8, 11 };
     static const int bar_h[] = { 2, 5, 8 };
     for (int i = 0; i < 3; i++) {
+        const u16 color = (unsigned)(i + 1) <= strength ? white : gray;
         for (int y = 13 - bar_h[i]; y <= 12; y++) {
             for (int x = bar_x[i]; x < bar_x[i] + 2; x++)
-                bg[(icon_y + y) * 256 + icon_x + x] = gray;
+                bg[(icon_y + y) * 256 + icon_x + x] = color;
         }
     }
 }
