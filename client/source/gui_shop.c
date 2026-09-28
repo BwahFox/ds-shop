@@ -49,6 +49,7 @@ static const Entry DS_ENTRIES[] = {
     {"DSiWare",        "Downloadable DSi software.",                  &CAT_DSIWARE, ACT_BROWSE},
     {"Random Title",   "Feeling lucky? Jump to a random DS game.",    &CAT_DS,      ACT_RANDOM},
     {"Search",         "Find a DS game by name.",                     &CAT_DS,      ACT_SEARCH},
+    {"Update DS Shop", "Get the latest version of the shop.",         NULL,         NULL},
 };
 static const Entry VC_ENTRIES[] = {
     {"NES",              "Nintendo Entertainment System classics.",     &CAT_NES, ACT_BROWSE},
