@@ -49,7 +49,7 @@ static const Entry DS_ENTRIES[] = {
     {"DSiWare",        "Downloadable DSi software.",                  &CAT_DSIWARE, ACT_BROWSE},
     {"Random Title",   "Feeling lucky? Jump to a random DS game.",    &CAT_DS,      ACT_RANDOM},
     {"Search",         "Find a DS game by name.",                     &CAT_DS,      ACT_SEARCH},
-    {"Update DS Shop", "Get the latest version of the shop.",         NULL,         ACT_BROWSE},
+    {"Update DS Shop", "Get the latest version of the shop.",         &CAT_DS,      ACT_BROWSE},
 };
 static const Entry VC_ENTRIES[] = {
     {"NES",              "Nintendo Entertainment System classics.",     &CAT_NES, ACT_BROWSE},
@@ -74,7 +74,7 @@ static const Entry THEME_ENTRIES[] = {
 static const Section SECTIONS[] = {
     {"Nintendo DS & DSiWare", "DS games and DSiWare",
      "DS games and DSiWare. Browse the popular picks, the full list, or search.",
-     DS_ENTRIES, 5},
+     DS_ENTRIES, 6},
     {"Virtual Console", "NES, Game Boy, GBC and GBA",
      "Classic games for TWiLight Menu++'s built-in emulators.",
      VC_ENTRIES, 5},
