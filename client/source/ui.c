@@ -2,6 +2,7 @@
 #include "app.h"
 #include "shop.h"
 #include "icon.h"
+#include "wifi.h"
 #include <nds.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -150,7 +151,6 @@ static void draw_detail(PrintConsole *top, const Title *t,
     iprintf("\x1b[0;0H" COL_TITLE "%-32.32s" COL_RESET, t->name);
     iprintf("\x1b[1;0H" COL_DIM "--------------------------------" COL_RESET);
 
-    /* word-wrap description into rows 3-7 */
     char desc_copy[MAX_DESC_LEN];
     strncpy(desc_copy, t->desc, MAX_DESC_LEN - 1);
     desc_copy[MAX_DESC_LEN - 1] = '\0';
@@ -159,7 +159,7 @@ static void draw_detail(PrintConsole *top, const Title *t,
     char *p = desc_copy;
     while (*p && row < 9) {
         char line[SCREEN_COLS + 1];
-        int  n = 0;
+        int n = 0;
         while (*p && n < SCREEN_COLS) line[n++] = *p++;
         line[n] = '\0';
         iprintf("\x1b[%d;0H%-32s", row++, line);
@@ -178,6 +178,58 @@ static void draw_detail(PrintConsole *top, const Title *t,
             qcount, qcount == 1 ? "" : "s");
 
     iprintf("\x1b[15;0H" COL_SELECT "[A] Queue   [X] Download" COL_RESET);
+}
+
+/* ---- top-screen wifi signal indicator ---- */
+static bool g_wifi_indicator_active;
+
+void draw_wifi_signal_indicator(void) {
+    u16 *bg = (u16 *)bgGetGfxPtr(3);
+    if (!bg) return;
+    g_wifi_indicator_active = true;
+
+    unsigned strength = wifi_get_signal_strength();
+
+    const int icon_x = 234;
+    const int icon_y = 170;
+    const u16 black = RGB5(0, 0, 0) | 0x8000;
+    const u16 green = RGB5(0, 31, 0) | 0x8000;
+    const u16 yellow = RGB5(31, 31, 0) | 0x8000;
+    const u16 red = RGB5(31, 0, 0) | 0x8000;
+    const u16 frame = strength == 0 ? red : strength == 1 ? yellow : green;
+    const u16 white = RGB5(31, 31, 31) | 0x8000;
+    const u16 gray = RGB5(17, 17, 17) | 0x8000;
+
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++)
+            bg[(icon_y + y) * 256 + icon_x + x] = black;
+
+    for (int x = 1; x < 15; x++) {
+        bg[(icon_y + 1) * 256 + icon_x + x] = frame;
+        bg[(icon_y + 14) * 256 + icon_x + x] = frame;
+    }
+
+    /* Hollow 3x3 antenna head, with a five-pixel stem. */
+    for (int y = 5; y <= 7; y++)
+        for (int x = 2; x <= 4; x++)
+            bg[(icon_y + y) * 256 + icon_x + x] = gray;
+    bg[(icon_y + 6) * 256 + icon_x + 3] = black;
+    for (int y = 8; y <= 12; y++)
+        bg[(icon_y + y) * 256 + icon_x + 3] = gray;
+
+    static const int bar_x[] = { 5, 8, 11 };
+    static const int bar_h[] = { 2, 5, 8 };
+    for (int i = 0; i < 3; i++) {
+        const u16 color = (unsigned)(i + 1) <= strength ? white : gray;
+        for (int y = 13 - bar_h[i]; y <= 12; y++) {
+            for (int x = bar_x[i]; x < bar_x[i] + 2; x++)
+                bg[(icon_y + y) * 256 + icon_x + x] = color;
+        }
+    }
+}
+
+void wifi_signal_indicator_tick(void) {
+    if (g_wifi_indicator_active) draw_wifi_signal_indicator();
 }
 
 /* ---- top screen during a download: just the title + total size ---- */
@@ -501,6 +553,7 @@ static int search_input(PrintConsole *top, PrintConsole *bot,
 #define ACT_RANDOM  1
 #define ACT_SEARCH  2
 #define ACT_PICK    3     /* VC "Search": pick the system first */
+#define ACT_UPDATE  4
 
 typedef struct {
     const char     *label;
@@ -510,6 +563,32 @@ typedef struct {
 
 static int run_entry(PrintConsole *top, PrintConsole *bot, const Config *config,
                      const MenuEntry *e) {
+    if (e->action == ACT_UPDATE) {
+        icon_hide();
+        consoleSelect(bot);
+        iprintf("\x1b[2J\x1b[0;0H" COL_TITLE "Update DS Shop" COL_RESET);
+        iprintf("\x1b[2;0H" COL_DIM "Downloading ds-shop.nds..." COL_RESET);
+        g_progress_screen = bot;
+        bool ok = shop_download_update(config, progress_cb);
+        g_progress_screen = NULL;
+
+        consoleSelect(bot);
+        iprintf("\x1b[2J\x1b[0;0H%s", ok
+                ? COL_GREEN "Update downloaded!" COL_RESET
+                : COL_RED "Update failed." COL_RESET);
+        if (ok)
+            iprintf("\x1b[2;0H" COL_DIM "Saved to:" COL_RESET
+                    "\x1b[3;0H%-32.32s", config->update_path);
+        else
+            iprintf("\x1b[2;0H" COL_DIM "Check the server and try again." COL_RESET);
+        iprintf("\x1b[23;0H" COL_HINT "Press any button to continue." COL_RESET);
+        while (1) {
+            app_vblank();
+            scanKeys();
+            if (keysDown()) break;
+        }
+        return NAV_BACK;
+    }
     if (e->action == ACT_SEARCH) {
         char query[32];
         if (!search_input(top, bot, query, sizeof(query))) return NAV_BACK;
@@ -557,6 +636,7 @@ void text_ui_run(PrintConsole *top, PrintConsole *bot, const Config *config) {
         {"Search",         &CAT_DS,      ACT_SEARCH},
         {"All DS Titles",  &CAT_DS,      ACT_BROWSE},
         {"DSiWare",        &CAT_DSIWARE, ACT_BROWSE},
+        {"Update DS Shop", &CAT_DS,      ACT_UPDATE},
     };
     static const MenuEntry vc_menu[] = {
         {"Nintendo Ent. System", &CAT_NES, ACT_BROWSE},
@@ -580,7 +660,7 @@ void text_ui_run(PrintConsole *top, PrintConsole *bot, const Config *config) {
         if (home < 0) continue;          /* no "back" from the homepage */
 
         int r;
-        if (home == 0)      r = run_menu(top, bot, config, "Nintendo DS & DSiWare", ds_menu, 5);
+        if (home == 0)      r = run_menu(top, bot, config, "Nintendo DS & DSiWare", ds_menu, 6);
         else if (home == 1) r = run_menu(top, bot, config, "Virtual Console", vc_menu, 5);
         else                r = run_menu(top, bot, config, "TWiLight Menu Themes", theme_menu, 4);
         if (r == NAV_EXIT) return;

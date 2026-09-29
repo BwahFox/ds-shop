@@ -174,7 +174,7 @@ void anim_wait_draw(int frame, bool shown) {
     if (!g_wait.ok) return;
     int slot = g_wait.slot0;
     if (shown)          /* 8 cells, 4 frames each (the Shop's own sequence) */
-        put(&g_wait, &slot, (frame / 4) % 8, SCR_W - 16, SCR_H - 16, false);
+        put(&g_wait, &slot, (frame / 4) % 8, 30 + 16 - 34, SCR_H - 30 + 16, false);
     clear_from(&g_wait, slot);
 }
 

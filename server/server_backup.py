@@ -1,13 +1,6 @@
-import hashlib
 import io
-import json
 import os
 import struct
-import tempfile
-import threading
-import time
-import urllib.error
-import urllib.request
 from flask import Flask, request, send_from_directory, Response, abort
 
 try:
@@ -18,138 +11,6 @@ except ImportError:
 app = Flask(__name__)
 
 ROMS_DIR = os.environ.get("ROMS_DIR", os.path.join(os.path.dirname(__file__), "roms"))
-
-GITHUB_RELEASE_API = "https://api.github.com/repos/SpareEnderboy/ds-shop/releases/latest"
-UPDATE_INTERVAL_SECONDS = 7 * 24 * 60 * 60
-MAX_UPDATE_SIZE = 32 * 1024 * 1024
-ORIGINAL_ROM_HASH_FILE = ".ds-shop-original.sha256"
-UPDATE_AVAILABLE = False
-UPDATE_STATUS_LOCK = threading.Lock()
-
-
-def _remember_original_rom_hash():
-    hash_path = os.path.join(ROMS_DIR, ORIGINAL_ROM_HASH_FILE)
-    try:
-        with open(hash_path, "r", encoding="ascii") as saved:
-            value = saved.read().strip().lower()
-        if len(value) == 64 and all(char in "0123456789abcdef" for char in value):
-            return value
-    except OSError:
-        pass
-
-    original_path = os.path.join(ROMS_DIR, "ds-shop.nds")
-    if not os.path.isfile(original_path):
-        return None
-    digest = hashlib.sha256()
-    with open(original_path, "rb") as original:
-        for chunk in iter(lambda: original.read(64 * 1024), b""):
-            digest.update(chunk)
-    value = digest.hexdigest()
-
-    fd, temp_path = tempfile.mkstemp(prefix=".ds-shop-hash-", suffix=".tmp", dir=ROMS_DIR)
-    try:
-        with os.fdopen(fd, "w", encoding="ascii") as saved:
-            saved.write(value + "\n")
-        os.replace(temp_path, hash_path)
-    finally:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-    return value
-
-
-def update_rom_from_github():
-    """Download the latest published shop ROM, replacing the current copy atomically."""
-    global UPDATE_AVAILABLE
-    temp_path = None
-    try:
-        original_hash = _remember_original_rom_hash()
-        request = urllib.request.Request(
-            GITHUB_RELEASE_API,
-            headers={"Accept": "application/vnd.github+json", "User-Agent": "ds-shop-server"},
-        )
-        with urllib.request.urlopen(request, timeout=20) as response:
-            release = json.load(response)
-
-        asset = next((item for item in release.get("assets", [])
-                      if item.get("name") == "ds-shop.nds"), None)
-        if asset is None:
-            app.logger.warning("Latest GitHub release has no ds-shop.nds asset")
-            return False
-
-        expected_size = int(asset.get("size", 0))
-        expected_digest = asset.get("digest") or ""
-        if expected_size < 0x160 or expected_size > MAX_UPDATE_SIZE:
-            app.logger.warning("Refusing GitHub ROM with unexpected size: %d", expected_size)
-            return False
-        if expected_digest and not expected_digest.startswith("sha256:"):
-            app.logger.warning("Refusing GitHub ROM with unsupported digest: %s", expected_digest)
-            return False
-
-        os.makedirs(ROMS_DIR, exist_ok=True)
-        fd, temp_path = tempfile.mkstemp(prefix=".ds-shop-", suffix=".tmp", dir=ROMS_DIR)
-        digest = hashlib.sha256()
-        downloaded = 0
-        request = urllib.request.Request(
-            asset["browser_download_url"],
-            headers={"Accept": "application/octet-stream", "User-Agent": "ds-shop-server"},
-        )
-        with os.fdopen(fd, "wb") as output, urllib.request.urlopen(request, timeout=30) as response:
-            while True:
-                chunk = response.read(64 * 1024)
-                if not chunk:
-                    break
-                downloaded += len(chunk)
-                if downloaded > expected_size or downloaded > MAX_UPDATE_SIZE:
-                    raise ValueError("GitHub ROM exceeded its declared size")
-                digest.update(chunk)
-                output.write(chunk)
-
-        if downloaded != expected_size:
-            raise ValueError(f"GitHub ROM size mismatch: expected {expected_size}, got {downloaded}")
-        if expected_digest and digest.hexdigest() != expected_digest.removeprefix("sha256:").lower():
-            raise ValueError("GitHub ROM SHA-256 digest mismatch")
-
-        new_hash = digest.hexdigest()
-        if original_hash is None:
-            original_hash = new_hash
-            hash_path = os.path.join(ROMS_DIR, ORIGINAL_ROM_HASH_FILE)
-            with open(hash_path, "w", encoding="ascii") as saved:
-                saved.write(original_hash + "\n")
-        with UPDATE_STATUS_LOCK:
-            UPDATE_AVAILABLE = new_hash != original_hash
-
-        destination = os.path.join(ROMS_DIR, "ds-shop.nds")
-        if os.path.isfile(destination) and os.path.getsize(destination) == downloaded:
-            with open(destination, "rb") as current:
-                if hashlib.file_digest(current, "sha256").digest() == digest.digest():
-                    os.unlink(temp_path)
-                    temp_path = None
-                    app.logger.info("ds-shop.nds is already up to date (%s)", release.get("tag_name"))
-                    return True
-
-        os.replace(temp_path, destination)
-        temp_path = None
-        app.logger.info("Updated ds-shop.nds to GitHub release %s", release.get("tag_name", "unknown"))
-        return True
-    except (OSError, ValueError, KeyError, urllib.error.URLError) as exc:
-        app.logger.warning("GitHub ROM update failed: %s", exc)
-        return False
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-
-def _github_update_loop():
-    while True:
-        try:
-            update_rom_from_github()
-        except Exception:
-            app.logger.exception("Unexpected error in GitHub ROM updater")
-        time.sleep(UPDATE_INTERVAL_SECONDS)
-
-
-def start_github_update_checker():
-    threading.Thread(target=_github_update_loop, name="github-rom-updater", daemon=True).start()
 
 # NDS banner layout (relative to the banner offset stored at header 0x68):
 #   0x020  icon bitmap   512 bytes (32x32, 4bpp, 16 tiles of 8x8)
@@ -420,17 +281,9 @@ def preview_bin():
 def serve_rom(filename):
     # Reject path traversal, but allow ".." inside a name (e.g. "Bros..nds").
     # send_from_directory also safely blocks escapes via safe_join.
-    if (filename.startswith("/") or ".." in filename.split("/")
-            or filename == ORIGINAL_ROM_HASH_FILE or filename.startswith(".ds-shop-")):
+    if filename.startswith("/") or ".." in filename.split("/"):
         abort(400)
     return send_from_directory(ROMS_DIR, filename)
-
-
-@app.route("/update_status")
-def update_status():
-    with UPDATE_STATUS_LOCK:
-        available = UPDATE_AVAILABLE
-    return Response("1" if available else "0", mimetype="text/plain")
 
 
 @app.route("/health")
@@ -443,5 +296,4 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")   # e.g. just a hotspot's address
     print(f"Serving ROMs from: {ROMS_DIR}")
     print(f"Listening on {host}:{port}")
-    start_github_update_checker()
     app.run(host=host, port=port)

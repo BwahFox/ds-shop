@@ -1,4 +1,5 @@
 #include "gfx.h"
+#include "ui.h"
 #include <string.h>
 
 /* Backbuffers live in main RAM (BSS): 2 x 96 KB. */
@@ -39,6 +40,7 @@ void gfx_present(int mask) {
         if (!(mask & (1 << s))) continue;
         DC_FlushRange(g_buf[s], sizeof(g_buf[s]));
         dmaCopy(g_buf[s], bgGetGfxPtr(g_bg_id[s]), sizeof(g_buf[s]));
+        if (s == SCR_TOP) draw_wifi_signal_indicator();
     }
 }
 

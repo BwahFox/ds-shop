@@ -17,8 +17,11 @@
 
 static u8  *g_data;
 static bool g_playing;
+static bool g_lid_closed;
+static bool g_resume_after_lid;
 static unsigned g_vol;
 static unsigned g_timer, g_loop_word, g_words;
+static void play(void);
 
 static void play(void) {
     soundPreparePcm(MUSIC_CH | SOUND_START, g_vol, 64, g_timer, SoundMode_Repeat,
@@ -65,6 +68,19 @@ void music_toggle(void) {
         g_playing = false;
     } else {
         play();                    /* starts over, like the DSi Shop */
+    }
+}
+
+void music_update_lid(bool closed) {
+    if (!g_data || closed == g_lid_closed) return;
+    g_lid_closed = closed;
+    if (closed) {
+        g_resume_after_lid = g_playing;
+        if (g_playing) soundStop(1U << MUSIC_CH);
+        g_playing = false;
+    } else {
+        if (g_resume_after_lid) play();
+        g_resume_after_lid = false;
     }
 }
 

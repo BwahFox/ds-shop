@@ -1,6 +1,7 @@
 #include <nds.h>
 #include <fat.h>
 #include <dswifi9.h>
+#include <calico/dev/blk.h>
 #include <stdio.h>
 #include <string.h>
 #include "app.h"
@@ -31,6 +32,35 @@
 #define BOOT_NO_SD      1
 #define BOOT_NO_WIFI    2
 #define BOOT_NO_SERVER  3
+#define BOOT_UPDATE_AVAILABLE 4
+
+static bool g_dldi_present;
+static bool g_twl_sd_present;
+
+static bool twl_sd_startup(void) {
+    return blkDevInit(BlkDevice_TwlSdCard);
+}
+
+static bool twl_sd_is_inserted(void) {
+    return blkDevIsPresent(BlkDevice_TwlSdCard);
+}
+
+static bool twl_sd_read_sectors(sec_t sector, sec_t count, void *buffer) {
+    return blkDevReadSectors(BlkDevice_TwlSdCard, buffer, sector, count);
+}
+
+static bool twl_sd_write_sectors(sec_t sector, sec_t count, const void *buffer) {
+    return blkDevWriteSectors(BlkDevice_TwlSdCard, buffer, sector, count);
+}
+
+static bool twl_sd_clear_status(void) { return true; }
+static bool twl_sd_shutdown(void) { return true; }
+
+static const DISC_INTERFACE g_twl_sd_iface = {
+    0x53445344, FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE,
+    twl_sd_startup, twl_sd_is_inserted, twl_sd_read_sectors,
+    twl_sd_write_sectors, twl_sd_clear_status, twl_sd_shutdown
+};
 
 /* Connect to WiFi and check the server; step() is told what's happening. */
 static int boot_network(Config *config, void (*step)(int)) {
@@ -45,7 +75,7 @@ static int boot_network(Config *config, void (*step)(int)) {
         wifi_disconnect();
         return BOOT_NO_SERVER;
     }
-    return BOOT_OK;
+    return shop_update_available(config) ? BOOT_UPDATE_AVAILABLE : BOOT_OK;
 #endif
 }
 
@@ -107,19 +137,23 @@ static int main_text(bool sd_ok, Config *config) {
     BG_PALETTE[191] = RGB15( 2,  6, 22);   /* slot 11 select       */
     BG_PALETTE[255] = RGB15( 1,  2,  8);   /* slot 15 title        */
 
+    draw_wifi_signal_indicator();
+
     consoleSelect(&g_bot);
     iprintf("\x1b[2J");
     iprintf("\x1b[0;0H\x1b[1;37m===[ DS SHOP ]=== \x1b[37m\n\n");
 
     if (!sd_ok) {
         iprintf("\x1b[31mFAT init failed!\x1b[37m\n");
-        iprintf("Insert SD card and restart.\n");
+        iprintf("DLDI device: %s\n", g_dldi_present ? "present" : "absent");
+        iprintf("DSi SD device: %s\n", g_twl_sd_present ? "present" : "absent");
         while (1) app_vblank();
     }
     iprintf("SD card OK\n");
     iprintf("Server: %s:%d\n\n", config->server, config->port);
 
     int r = boot_network(config, text_step);
+    draw_wifi_signal_indicator();
     if (r == BOOT_NO_WIFI) {
         iprintf("\x1b[31mWiFi connection failed!\x1b[37m\n\n");
         iprintf("Configure WFC slot 1 via any\nWFC-enabled DS game.\n");
@@ -133,6 +167,12 @@ static int main_text(bool sd_ok, Config *config) {
         iprintf("\nPress A to exit.\n");
         wait_for_button();
         return 1;
+    }
+    if (r == BOOT_UPDATE_AVAILABLE) {
+        iprintf("\x1b[1;33mA new DS Shop version is available.\n\x1b[37m");
+        iprintf("Choose Update DS Shop from the\nNintendo DS & DSiWare menu.\n");
+        iprintf("Press A to continue.\n");
+        wait_for_button();
     }
 
     text_ui_run(&g_top, &g_bot, config);
@@ -153,7 +193,11 @@ static int main_gui(bool sd_ok, Config *config) {
     http_set_hooks(busy_set, gui_net_waiting);
 
     if (!sd_ok) {
-        gui_status("No SD card", "The SD card couldn't be read.", "Insert it and restart.");
+        char devices[48];
+        snprintf(devices, sizeof(devices), "DLDI: %s, DSi SD: %s",
+                 g_dldi_present ? "present" : "absent",
+                 g_twl_sd_present ? "present" : "absent");
+        gui_status("No SD card", "The card couldn't be mounted.", devices);
         while (1) app_vblank();
     }
 
@@ -169,6 +213,9 @@ static int main_gui(bool sd_ok, Config *config) {
         gui_message("Server not reachable", where, NULL);
         return 1;
     }
+    if (r == BOOT_UPDATE_AVAILABLE)
+        gui_message("Update available", "A new DS Shop ROM is ready.",
+                    "Choose Update DS Shop on the home screen.");
 
     gui_run(config);
     return 0;
@@ -176,6 +223,7 @@ static int main_gui(bool sd_ok, Config *config) {
 
 int main(void) {
     irqSet(IRQ_VBLANK, NULL);
+    pmSetSleepAllowed(true);
 
     /* holding SELECT at boot picks the text fallback */
     app_vblank();
@@ -190,6 +238,10 @@ int main(void) {
     config.port = 8888;
 #else
     bool sd_ok = fatInitDefault();
+    g_dldi_present = blkDevIsPresent(BlkDevice_Dldi);
+    g_twl_sd_present = blkDevIsPresent(BlkDevice_TwlSdCard);
+    if (!sd_ok && g_twl_sd_present)
+        sd_ok = fatMountSimple("fat", &g_twl_sd_iface);
     config_load(&config, CONFIG_PATH);      /* defaults if the file is missing */
 #endif
     if (config.text_ui) text = true;

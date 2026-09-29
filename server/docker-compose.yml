@@ -4,7 +4,7 @@ services:
     ports:
       - "8888:8888"
     volumes:
-      - ${ROMS_DIR:-./roms}:/roms:ro
+      - ${ROMS_DIR:-./roms}:/roms
     environment:
       - ROMS_DIR=/roms
       - PORT=8888

@@ -28,3 +28,18 @@ bool wifi_connect(const Config *config) {
 void wifi_disconnect(void) {
     Wifi_DisconnectAP();
 }
+
+unsigned wifi_get_signal_strength(void) {
+    if (Wifi_AssocStatus() != ASSOCSTATUS_ASSOCIATED) return 0;
+
+    if (isDSiMode()) {
+        int dbm = (int)(s8)wlmgrGetRssi();
+        if (dbm > -40 || dbm < -90) return 0;
+        if (dbm >= -52) return 3;
+        if (dbm >= -65) return 2;
+        if (dbm >= -78) return 1;
+        return 0;
+    } else {
+        return wlmgrGetSignalStrength();
+    }
+}

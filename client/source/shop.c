@@ -184,6 +184,31 @@ bool shop_download(const Config *config, const QueueItem *item,
                                          : download_rom(config, item);
 }
 
+bool shop_download_update(const Config *config,
+                          void (*progress)(size_t done, size_t total)) {
+#ifdef TEST_MODE
+    (void)config;
+    size_t total = 1024 * 1024;
+    for (int i = 1; i <= 90; i++) {
+        app_vblank();
+        if (progress) progress((size_t)((u64)total * i / 90), total);
+    }
+    return true;
+#else
+    const char *dest = config->update_path[0] ? config->update_path : DEFAULT_UPDATE_PATH;
+    char dest_dir[MAX_PATH_LEN];
+    snprintf(dest_dir, sizeof(dest_dir), "%s", dest);
+    char *slash = strrchr(dest_dir, '/');
+    if (slash) {
+        if (slash == dest_dir) slash[1] = '\0';
+        else *slash = '\0';
+        mkdir_p(dest_dir);
+    }
+    return http_download(config->server, config->port, "/roms/ds-shop.nds",
+                         dest, progress) >= 0;
+#endif
+}
+
 void shop_run_queue(const Config *config, const ShopDownloadUI *ui, int *ok, int *failed) {
     int total = g_queue_count, good = 0, keep = 0;
     for (int i = 0; i < g_queue_count; i++) {
@@ -232,6 +257,19 @@ bool shop_pick_server(Config *config) {
     config_swap_servers(config);
     if (config->using_backup) config_swap_servers(config);
     return false;
+}
+
+bool shop_update_available(const Config *config) {
+#ifdef TEST_MODE
+    (void)config;
+    return false;
+#else
+    char response[8];
+    HttpResponse http_response;
+    int len = http_get(config->server, config->port, "/update_status",
+                       response, sizeof(response), &http_response);
+    return len == 1 && response[0] == '1';
+#endif
 }
 
 /* ---- misc ---- */

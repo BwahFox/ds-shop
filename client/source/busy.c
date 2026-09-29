@@ -21,7 +21,7 @@
 #include "gfx.h"
 
 #define DOTS        8
-#define SPIN_X      (SCR_W - 30)
+#define SPIN_X      30
 #define SPIN_Y      (SCR_H - 30)
 #define SHOW_AFTER  15          /* frames: quick requests don't flash it */
 #define STEP_FRAMES 5           /* frames per dot */

@@ -27,6 +27,7 @@
 #define ACT_RANDOM  1
 #define ACT_SEARCH  2
 #define ACT_PICK    3        /* pick a VC system, then search it */
+#define ACT_UPDATE  4        /* update the shop itself */
 
 typedef struct {
     const char     *label;
@@ -49,6 +50,7 @@ static const Entry DS_ENTRIES[] = {
     {"DSiWare",        "Downloadable DSi software.",                  &CAT_DSIWARE, ACT_BROWSE},
     {"Random Title",   "Feeling lucky? Jump to a random DS game.",    &CAT_DS,      ACT_RANDOM},
     {"Search",         "Find a DS game by name.",                     &CAT_DS,      ACT_SEARCH},
+    {"Update DS Shop", "Get the latest version of the shop.",         &CAT_DS,      ACT_UPDATE},
 };
 static const Entry VC_ENTRIES[] = {
     {"NES",              "Nintendo Entertainment System classics.",     &CAT_NES, ACT_BROWSE},
@@ -73,7 +75,7 @@ static const Entry THEME_ENTRIES[] = {
 static const Section SECTIONS[] = {
     {"Nintendo DS & DSiWare", "DS games and DSiWare",
      "DS games and DSiWare. Browse the popular picks, the full list, or search.",
-     DS_ENTRIES, 5},
+     DS_ENTRIES, 6},
     {"Virtual Console", "NES, Game Boy, GBC and GBA",
      "Classic games for TWiLight Menu++'s built-in emulators.",
      VC_ENTRIES, 5},
@@ -120,7 +122,7 @@ static const char *downloads_label(void) {
 #define ID_DOWNLOADS  101
 #define ID_SETTINGS   102
 
-/* Returns the chosen index, NAV_BACK, NAV_EXIT or NAV_DOWNLOADS. */
+/* Returns the chosen index or a NAV_* action. */
 static int menu_screen(const Section *sec, bool home) {
     Widget w[9];              /* up to 6 entries + Back + Settings + Downloads */
     int n = 0;
@@ -389,6 +391,33 @@ static void run_downloads(const Config *config) {
     snprintf(l1, sizeof(l1), "%d item%s downloaded.", ok, ok == 1 ? "" : "s");
     if (fail) snprintf(l2, sizeof(l2), "%d failed and stayed in the queue.", fail);
     gui_message(fail ? "Some downloads failed" : "Download complete", l1, fail ? l2 : NULL);
+}
+
+static void run_update(const Config *config) {
+    static QueueItem update_item;
+    g_dl_item = &update_item;
+    g_dl_n = 1;
+    g_dl_total = 1;
+    g_dl_pct = 0;
+    g_dl_waiting = false;
+
+    gui_top_frame(bg_detail_top, 52, 88);
+    gfx_text_wrap(SCR_TOP, &font_title, 26, 60, SCR_W - 52, 2, "Update DS Shop", C_TEXT);
+    gfx_text_center(SCR_TOP, &font_small, SCR_W / 2, 116,
+                    "Downloading the latest version", C_TEXT_DIM);
+    gfx_present(1);
+    anim_dl_start();
+    dl_draw(0, 0);
+
+    bool ok = shop_download_update(config, dl_progress);
+    dl_end(&update_item, ok);
+    g_dl_item = NULL;
+    anim_dl_stop();
+
+    gui_message(ok ? "Update downloaded" : "Update failed",
+                ok ? "Saved to /roms/nds/ds-shop.nds."
+                   : "Couldn't download ds-shop.nds from the server.",
+                ok ? NULL : "Check the server and try again.");
 }
 
 /* ---- the list browser ---- */
@@ -662,14 +691,14 @@ static int browse_screen(const Config *config, const Category *cat,
 
 /* ---- settings ---- */
 
-enum { SET_SERVER, SET_PORT, SET_SERVER2, SET_PORT2, SET_MUSIC, SET_VOLUME, SET_UI, SET_COUNT };
+enum { SET_SERVER, SET_PORT, SET_SERVER2, SET_PORT2, SET_MUSIC, SET_VOLUME, SET_UI, SET_UPDATE_PATH, SET_COUNT };
 #define ID_SET_CANCEL 300
 #define ID_SET_SAVE   301
 #define SET_Y   28
 #define SET_H   17
 
 static const char *const SET_LABELS[SET_COUNT] = {
-    "Server", "Port", "Backup server", "Backup port", "Music", "Music volume", "Start in",
+    "Server", "Port", "Backup server", "Backup port", "Music", "Music volume", "Start in", "Update path"
 };
 static const char *const SET_HELP[SET_COUNT] = {
     "The address of the PC or Pi running the shop server. Tap to change it.",
@@ -679,17 +708,19 @@ static const char *const SET_HELP[SET_COUNT] = {
     "The DSi Shop music (needs music.bin). SELECT also mutes it anywhere.",
     "How loud the music plays. Left and Right change it.",
     "Which interface to start in. Holding SELECT at startup picks the text one.",
+    "Where to save the updated DS Shop rom. Defaults to /roms/nds/ds-shop.nds",
 };
 
 static void setting_value(const Config *c, int i, char *buf, int len) {
     switch (i) {
-    case SET_SERVER:  snprintf(buf, len, "%s", c->server); break;
-    case SET_PORT:    snprintf(buf, len, "%d", c->port); break;
-    case SET_SERVER2: snprintf(buf, len, "%s", c->server2[0] ? c->server2 : "None"); break;
-    case SET_PORT2:   snprintf(buf, len, "%d", c->port2); break;
-    case SET_MUSIC:   snprintf(buf, len, "%s", c->music ? "On" : "Off"); break;
-    case SET_VOLUME:  snprintf(buf, len, "<  %d%%  >", c->music_volume); break;
-    default:          snprintf(buf, len, "%s", c->text_ui ? "Text menu" : "Shop"); break;
+    case SET_SERVER:      snprintf(buf, len, "%s", c->server); break;
+    case SET_PORT:        snprintf(buf, len, "%d", c->port); break;
+    case SET_SERVER2:     snprintf(buf, len, "%s", c->server2[0] ? c->server2 : "None"); break;
+    case SET_PORT2:       snprintf(buf, len, "%d", c->port2); break;
+    case SET_MUSIC:       snprintf(buf, len, "%s", c->music ? "On" : "Off"); break;
+    case SET_VOLUME:      snprintf(buf, len, "<  %d%%  >", c->music_volume); break;
+    case SET_UPDATE_PATH: snprintf(buf, len, "%s", c->update_path); break;
+    default:              snprintf(buf, len, "%s", c->text_ui ? "Text menu" : "Shop"); break;
     }
 }
 
@@ -822,6 +853,10 @@ static void settings_screen(Config *config) {
 /* ---- running a menu entry ---- */
 
 static int run_entry(const Config *config, const Entry *e) {
+    if (e->action == ACT_UPDATE) {
+        run_update(config);
+        return NAV_BACK;
+    }
     if (e->action == ACT_SEARCH) {
         char q[40];
         if (!keyboard_screen(e->cat->name, q, sizeof(q))) return NAV_BACK;

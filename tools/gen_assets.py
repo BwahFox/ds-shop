@@ -87,13 +87,28 @@ def gen_font(cname, fname, size):
 
 def gen_background(cname, path):
     im = Image.open(os.path.join(GFX, path)).convert("RGB").resize((256, 192))
+    source = im.copy()
+
+    def is_separator(pixel):
+        r, g, b = pixel
+        return r < 40 and 100 < g < 160 and 100 < b < 160
+
     # some panels kept a 1px teal (#008080) separator from the sprite sheet:
-    # replace those pixels with their horizontal neighbour
+    # replace each separator pixel with the nearest non-separator pixel
     for y in range(192):
         for x in range(256):
-            r, g, b = im.getpixel((x, y))
-            if r < 40 and 100 < g < 160 and 100 < b < 160:
-                im.putpixel((x, y), im.getpixel((x + 1 if x < 255 else x - 1, y)))
+            if not is_separator(source.getpixel((x, y))):
+                continue
+
+            for distance in range(1, max(im.width, im.height)):
+                candidates = ((x + distance, y), (x - distance, y),
+                              (x, y + distance), (x, y - distance))
+                replacement = next((source.getpixel(pos) for pos in candidates
+                                    if 0 <= pos[0] < im.width and 0 <= pos[1] < im.height
+                                    and not is_separator(source.getpixel(pos))), None)
+                if replacement is not None:
+                    im.putpixel((x, y), replacement)
+                    break
     vals = [rgb15(*p) for p in pixels(im)]
     return (c_array("u16", cname, vals, 12, "0x{:04x}"),
             f"extern const u16 {cname}[256 * 192];\n")
