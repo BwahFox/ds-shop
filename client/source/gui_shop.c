@@ -122,7 +122,7 @@ static const char *downloads_label(void) {
 #define ID_DOWNLOADS  101
 #define ID_SETTINGS   102
 
-/* Returns the chosen index, NAV_BACK, NAV_EXIT or NAV_DOWNLOADS. */
+/* Returns the chosen index or a NAV_* action. */
 static int menu_screen(const Section *sec, bool home) {
     Widget w[9];              /* up to 6 entries + Back + Settings + Downloads */
     int n = 0;

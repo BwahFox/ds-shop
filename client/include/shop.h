@@ -52,6 +52,7 @@ void shop_run_queue(const Config *config, const ShopDownloadUI *ui, int *ok, int
    hotspot doesn't wait on the home server's address. Leaves the one that
    answered in config->server/port. False if neither answered. */
 bool shop_pick_server(Config *config);
+bool shop_update_available(const Config *config);
 
 /* ---- misc ---- */
 void     shop_stir(void);            /* call once per input frame: feeds shop_random */

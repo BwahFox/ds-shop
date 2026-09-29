@@ -259,6 +259,19 @@ bool shop_pick_server(Config *config) {
     return false;
 }
 
+bool shop_update_available(const Config *config) {
+#ifdef TEST_MODE
+    (void)config;
+    return false;
+#else
+    char response[8];
+    HttpResponse http_response;
+    int len = http_get(config->server, config->port, "/update_status",
+                       response, sizeof(response), &http_response);
+    return len == 1 && response[0] == '1';
+#endif
+}
+
 /* ---- misc ---- */
 static unsigned g_entropy = 0;
 

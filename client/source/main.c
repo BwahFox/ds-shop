@@ -32,6 +32,7 @@
 #define BOOT_NO_SD      1
 #define BOOT_NO_WIFI    2
 #define BOOT_NO_SERVER  3
+#define BOOT_UPDATE_AVAILABLE 4
 
 static bool g_dldi_present;
 static bool g_twl_sd_present;
@@ -74,7 +75,7 @@ static int boot_network(Config *config, void (*step)(int)) {
         wifi_disconnect();
         return BOOT_NO_SERVER;
     }
-    return BOOT_OK;
+    return shop_update_available(config) ? BOOT_UPDATE_AVAILABLE : BOOT_OK;
 #endif
 }
 
@@ -167,6 +168,12 @@ static int main_text(bool sd_ok, Config *config) {
         wait_for_button();
         return 1;
     }
+    if (r == BOOT_UPDATE_AVAILABLE) {
+        iprintf("\x1b[1;33mA new DS Shop version is available.\n\x1b[37m");
+        iprintf("Choose Update DS Shop from the\nNintendo DS & DSiWare menu.\n");
+        iprintf("Press A to continue.\n");
+        wait_for_button();
+    }
 
     text_ui_run(&g_top, &g_bot, config);
     return 0;
@@ -206,6 +213,9 @@ static int main_gui(bool sd_ok, Config *config) {
         gui_message("Server not reachable", where, NULL);
         return 1;
     }
+    if (r == BOOT_UPDATE_AVAILABLE)
+        gui_message("Update available", "A new DS Shop ROM is ready.",
+                    "Choose Update DS Shop on the home screen.");
 
     gui_run(config);
     return 0;

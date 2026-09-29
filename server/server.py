@@ -19,15 +19,50 @@ app = Flask(__name__)
 
 ROMS_DIR = os.environ.get("ROMS_DIR", os.path.join(os.path.dirname(__file__), "roms"))
 
-GITHUB_RELEASE_API = "https://api.github.com/repos/BwahFox/ds-shop/releases/latest"
+GITHUB_RELEASE_API = "https://api.github.com/repos/SpareEnderboy/ds-shop/releases/latest"
 UPDATE_INTERVAL_SECONDS = 7 * 24 * 60 * 60
 MAX_UPDATE_SIZE = 32 * 1024 * 1024
+ORIGINAL_ROM_HASH_FILE = ".ds-shop-original.sha256"
+UPDATE_AVAILABLE = False
+UPDATE_STATUS_LOCK = threading.Lock()
+
+
+def _remember_original_rom_hash():
+    hash_path = os.path.join(ROMS_DIR, ORIGINAL_ROM_HASH_FILE)
+    try:
+        with open(hash_path, "r", encoding="ascii") as saved:
+            value = saved.read().strip().lower()
+        if len(value) == 64 and all(char in "0123456789abcdef" for char in value):
+            return value
+    except OSError:
+        pass
+
+    original_path = os.path.join(ROMS_DIR, "ds-shop.nds")
+    if not os.path.isfile(original_path):
+        return None
+    digest = hashlib.sha256()
+    with open(original_path, "rb") as original:
+        for chunk in iter(lambda: original.read(64 * 1024), b""):
+            digest.update(chunk)
+    value = digest.hexdigest()
+
+    fd, temp_path = tempfile.mkstemp(prefix=".ds-shop-hash-", suffix=".tmp", dir=ROMS_DIR)
+    try:
+        with os.fdopen(fd, "w", encoding="ascii") as saved:
+            saved.write(value + "\n")
+        os.replace(temp_path, hash_path)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+    return value
 
 
 def update_rom_from_github():
     """Download the latest published shop ROM, replacing the current copy atomically."""
+    global UPDATE_AVAILABLE
     temp_path = None
     try:
+        original_hash = _remember_original_rom_hash()
         request = urllib.request.Request(
             GITHUB_RELEASE_API,
             headers={"Accept": "application/vnd.github+json", "User-Agent": "ds-shop-server"},
@@ -73,6 +108,15 @@ def update_rom_from_github():
             raise ValueError(f"GitHub ROM size mismatch: expected {expected_size}, got {downloaded}")
         if expected_digest and digest.hexdigest() != expected_digest.removeprefix("sha256:").lower():
             raise ValueError("GitHub ROM SHA-256 digest mismatch")
+
+        new_hash = digest.hexdigest()
+        if original_hash is None:
+            original_hash = new_hash
+            hash_path = os.path.join(ROMS_DIR, ORIGINAL_ROM_HASH_FILE)
+            with open(hash_path, "w", encoding="ascii") as saved:
+                saved.write(original_hash + "\n")
+        with UPDATE_STATUS_LOCK:
+            UPDATE_AVAILABLE = new_hash != original_hash
 
         destination = os.path.join(ROMS_DIR, "ds-shop.nds")
         if os.path.isfile(destination) and os.path.getsize(destination) == downloaded:
@@ -376,9 +420,17 @@ def preview_bin():
 def serve_rom(filename):
     # Reject path traversal, but allow ".." inside a name (e.g. "Bros..nds").
     # send_from_directory also safely blocks escapes via safe_join.
-    if filename.startswith("/") or ".." in filename.split("/"):
+    if (filename.startswith("/") or ".." in filename.split("/")
+            or filename == ORIGINAL_ROM_HASH_FILE or filename.startswith(".ds-shop-")):
         abort(400)
     return send_from_directory(ROMS_DIR, filename)
+
+
+@app.route("/update_status")
+def update_status():
+    with UPDATE_STATUS_LOCK:
+        available = UPDATE_AVAILABLE
+    return Response("1" if available else "0", mimetype="text/plain")
 
 
 @app.route("/health")
