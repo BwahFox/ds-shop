@@ -6,7 +6,7 @@ endif
 
 # Banner shown by the DS menu and loaders. Set before ds_rules reads them; the
 # icon path is fixed in the first pass and inherited by the one inside build/.
-VERSION         := 1.0.0
+VERSION         := 1.1.0
 GAME_TITLE      := DS Shop
 GAME_SUBTITLE1  := Game downloader
 GAME_SUBTITLE2  := v$(VERSION)
