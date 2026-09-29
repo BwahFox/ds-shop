@@ -1,3 +1,6 @@
+# AI Disclosure
+Tools such as Claude Code were heavily utilized in the production of this project.
+
 # DS Shop
 
 A DSi Shop–style game downloader for the Nintendo DS. A homebrew `.nds` app
